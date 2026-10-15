@@ -1,10 +1,10 @@
 # Architecture and extension points
 
-`src/index.ts` registers ten definitions, a shared `still-card` element, ten focused aliases, the editor, and card-picker metadata. The production bundle is a single ES module with Lit included. It exports the registry, shared card/editor classes, shared styles, and TypeScript source types.
+`src/index.ts` registers twelve definitions, a shared `still-card` element, twelve focused aliases, the editor, and card-picker metadata. The production bundle is a single ES module with Lit included. It exports the registry, shared card/editor classes, shared styles, and TypeScript source types.
 
 `hacs.json` selects the built JavaScript asset from GitHub releases. The source branch does not contain build output. Optional tag-triggered automation is supplied in `automation/workflows/`; it must be activated before it can check and publish releases. Direct release publication supports the same HACS installation path. See [releasing.md](releasing.md) for distribution details.
 
-`StillCard` owns the contract with Home Assistant: `setConfig`, `hass`, `getCardSize`, `getGridOptions`, error/pending state, accessible header, and token overrides. It requests the current `states`, `hassApi`, `hassConfig`, `hassFormatters`, and `hassInternationalization` contexts through `context-request` events, while retaining the legacy `hass` property. Subscriptions are cleaned up on disconnect. Entity identity comparisons avoid rerendering for unrelated state changes. The shared shell validates configuration before accepting it.
+`StillCard` owns the contract with Home Assistant: `setConfig`, `hass`, `getCardSize`, `getGridOptions`, error/pending state, accessible header and detail sheet, and token overrides. It requests the current `states`, `hassApi`, `hassConfig`, `hassFormatters`, and `hassInternationalization` contexts through `context-request` events, while retaining the legacy `hass` property. Subscriptions are cleaned up on disconnect. Primary, chip, and related solar entity identity comparisons avoid rerendering for unrelated state changes. The shared shell validates configuration before accepting it.
 
 `src/core` provides configuration, entity helpers, action routing, public types, styling, and the definition registry. `src/cards` contains focused domain renderers and reusable buttons/sliders. Renderers are plain functions returning Lit templates; they do not subscribe to Home Assistant or mutate entity data. `src/editor.ts` emits composed `config-changed` events and preserves options it is not editing.
 
@@ -33,14 +33,14 @@ export const plantDefinition: CardDefinition = {
 };
 ```
 
-The common shell renders the header. `RenderContext` exposes the validated config, entity, effective hass, pending/disabled flags, `icon()`, `call(ServiceCommand)`, and `act(CardAction)`. Use the common control styles (`control`, `caption`, `value`, `controls`, `range-label`) and `src/cards/ui.ts` helpers to keep extensions consistent. Gate commands against the actual entity's capabilities.
+The common shell renders the header and a native modal `<dialog>`. It manages keyboard focus, Escape/backdrop dismissal, focus return, and keeps the sheet open during state updates. The renderer receives its view so it can expand controls without duplicating service logic. `RenderContext` exposes the validated config, entity, effective hass, `view` (`card` or `details`), pending/disabled flags, `icon()`, `call(ServiceCommand)`, and `act(CardAction)`. Use the common control styles (`control`, `caption`, `value`, `controls`, `range-label`) and `src/cards/ui.ts` helpers to keep extensions consistent. Gate commands against the actual entity's capabilities.
 
 ## Add a separate extension module
 
 The bundled registry is also exported. Import the same resource URL that Home Assistant loads, then register a definition. Use `custom:still-card` with a `kind` for external extensions; aliases and picker entries are generated only at the library's initial registration.
 
 ```js
-import { registerCardDefinition } from '/local/still-cards.js?v=0.1.0';
+import { registerCardDefinition } from '/local/still-cards.js?v=0.2.0';
 
 registerCardDefinition({
   kind: 'water-check',
@@ -65,7 +65,7 @@ Duplicate kinds are rejected. The external file must finish registering before a
 
 Namespaced tokens form the stable styling API. They cascade from HA theme → card host overrides → shadow DOM primitives. Surface/text fallbacks allow a card to work under another HA theme. No global production stylesheet is injected. Changes to the visual system belong in `src/core/styles.ts` and `themes/still.yaml`, not repeated in renderers.
 
-Sections uses conservative sizes to avoid clipping controls. Climate defaults to 12 columns, minimum 9; other device cards default to 6, minimum 6. Title/chips default to 12. Chips omit fixed rows to support wrapping. Custom card styles with unusually large padding/fonts may need additional grid space. Masonry uses the definition's row estimate as `getCardSize`.
+Sections uses conservative sizes to avoid clipping controls. Climate and solar default to 12 columns, minimum 9; other device cards default to 6, minimum 6. Title/chips default to 12. Chips omit fixed rows to support wrapping. Custom card styles with unusually large padding/fonts may need additional grid space. Masonry uses the definition's row estimate as `getCardSize`.
 
 ## Checks
 

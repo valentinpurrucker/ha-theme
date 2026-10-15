@@ -14,7 +14,8 @@ export const lightDefinition: CardDefinition = {
     const max = numberAttribute(entity, 'max_color_temp_kelvin');
     const color = numberAttribute(entity, 'color_temp_kelvin');
     return html`${toggle(context, 'light')}
+      ${config.layout === 'tile' && context.view === 'card' ? nothing : html`
       ${brightnessSupported(entity) ? range(context, 'Brightness', brightness, 0, 100, 1, '%', (value) => command(context, 'light', value === 0 ? 'turn_off' : 'turn_on', value === 0 ? {} : { brightness_pct: clamp(value, 1, 100) })) : nothing}
-      ${Array.isArray(modes) && modes.includes('color_temp') && min !== undefined && max !== undefined ? range(context, 'Warmth', color ?? min, min, max, 1, ' K', (value) => command(context, 'light', 'turn_on', { color_temp_kelvin: clamp(value, min, max) })) : nothing}`;
+      ${Array.isArray(modes) && modes.includes('color_temp') && min !== undefined && max !== undefined ? range(context, 'Warmth', color ?? min, min, max, 1, ' K', (value) => command(context, 'light', 'turn_on', { color_temp_kelvin: clamp(value, min, max) })) : nothing}`}`;
   },
 };

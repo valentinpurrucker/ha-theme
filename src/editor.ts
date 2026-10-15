@@ -18,7 +18,7 @@ export class StillCardEditor extends LitElement {
 
   protected updated(): void {
     if (!this.config) return;
-    const values: Record<string, string> = { kind: resolveKind(this.config), variant: this.config.variant ?? 'soft', density: this.config.density ?? 'comfortable' };
+    const values: Record<string, string> = { kind: resolveKind(this.config), variant: this.config.variant ?? 'soft', density: this.config.density ?? 'comfortable', layout: this.config.layout ?? 'panel' };
     // Select options are stamped by Lit. Set the value after the option nodes exist.
     this.renderRoot.querySelectorAll<HTMLSelectElement>('select[name]').forEach((select) => { select.value = values[select.name]; });
   }
@@ -35,11 +35,20 @@ export class StillCardEditor extends LitElement {
     return html`<label>${label}<input .value=${String(this.config?.[key] ?? '')} list=${list ?? nothing} @change=${(event: Event) => this.change(key, (event.target as HTMLInputElement).value)} /></label>`;
   }
 
-  private json(key: 'chips' | 'tap_action' | 'style', label: string) {
+  private json(key: 'chips' | 'tap_action' | 'style' | 'solar', label: string) {
     return html`<label>${label}<textarea .value=${this.config?.[key] ? JSON.stringify(this.config[key], null, 2) : ''} @change=${(event: Event) => {
       try { const value = (event.target as HTMLTextAreaElement).value; this.change(key, value.trim() ? JSON.parse(value) : undefined); this.jsonError = ''; }
       catch { this.jsonError = `${label} needs valid JSON. Your last valid configuration is preserved.`; }
     }}></textarea></label>`;
+  }
+
+  private solarField(key: 'home_power' | 'grid_power' | 'battery_level' | 'battery_power' | 'energy_today', label: string) {
+    return html`<label>${label}<input list="entities" .value=${this.config?.solar?.[key] ?? ''} @change=${(event: Event) => {
+      const solar = { ...this.config?.solar };
+      const value = (event.target as HTMLInputElement).value.trim();
+      if (value) solar[key] = value; else delete solar[key];
+      this.change('solar', solar);
+    }} /></label>`;
   }
 
   protected render() {
@@ -53,6 +62,9 @@ export class StillCardEditor extends LitElement {
       <div class="pair"><label>Style<select name="variant" .value=${this.config.variant ?? 'soft'} @change=${(event: Event) => this.change('variant', (event.target as HTMLSelectElement).value)}>${['soft', 'outlined', 'minimal'].map((style) => html`<option value=${style}>${style}</option>`)}</select></label><label>Density<select name="density" .value=${this.config.density ?? 'comfortable'} @change=${(event: Event) => this.change('density', (event.target as HTMLSelectElement).value)}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label></div>
       <div class="pair"><label class="check"><input type="checkbox" .checked=${this.config.show_state !== false} @change=${(event: Event) => this.change('show_state', (event.target as HTMLInputElement).checked)} />Show state</label><label class="check"><input type="checkbox" .checked=${this.config.show_controls !== false} @change=${(event: Event) => this.change('show_controls', (event.target as HTMLInputElement).checked)} />Show controls</label></div>
       ${kind === 'entity' ? html`<div class="pair">${this.text('attribute', 'Attribute (optional)')}${this.text('unit', 'Unit override')}</div>` : nothing}
+      ${kind === 'light' ? html`<label>Layout<select name="layout" @change=${(event: Event) => this.change('layout', (event.target as HTMLSelectElement).value)}><option value="panel">Panel · all controls</option><option value="tile">Tile · controls in details</option></select></label>` : nothing}
+      ${kind === 'climate' ? html`<label class="check"><input type="checkbox" .checked=${this.config.show_presets !== false} @change=${(event: Event) => this.change('show_presets', (event.target as HTMLInputElement).checked)} />Show supported presets</label>` : nothing}
+      ${kind === 'solar' ? html`<div class="pair">${this.solarField('home_power', 'Home power (W / kW)')}${this.solarField('grid_power', 'Grid power (W / kW)')}${this.solarField('battery_level', 'Battery level (%)')}${this.solarField('battery_power', 'Battery power (W / kW)')}</div>${this.solarField('energy_today', 'Generated today (Wh / kWh)')}<label class="check"><input type="checkbox" .checked=${this.config.solar?.grid_export_positive === true} @change=${(event: Event) => this.change('solar', { ...this.config?.solar, grid_export_positive: (event.target as HTMLInputElement).checked })} />Grid positive means export</label><small>Related sensors are optional. Leave a field empty to hide it. Grid power normally uses positive readings for import and negative readings for export.</small>` : nothing}
       ${kind === 'chips' ? this.json('chips', 'Chips') : nothing}
       <details><summary>Advanced options</summary><div class="form">${this.json('style', 'Style overrides')}${this.json('tap_action', 'Tap action')}<small>Theme tokens style the whole collection. Per-card overrides and actions can also be entered in the YAML editor.</small></div></details>
       ${this.jsonError ? html`<p class="error" role="alert">${this.jsonError}</p>` : nothing}

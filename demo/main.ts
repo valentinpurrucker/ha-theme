@@ -15,16 +15,17 @@ import type { StillCardEditor } from '../src/editor';
 type Entry = { id: string; room: string; config: StillConfig };
 const entries: Entry[] = [
   { id: 'light', room: 'Living room', config: { type: 'custom:still-light-card', entity: 'light.living_room', name: 'Reading light' } },
-  { id: 'climate', room: 'Living room', config: { type: 'custom:still-climate-card', entity: 'climate.living_room', name: 'Just the right temperature' } },
-  { id: 'media', room: 'Living room', config: { type: 'custom:still-media-card', entity: 'media_player.living_room', name: 'A little background music' } },
+  { id: 'climate', room: 'Living room', config: { type: 'custom:still-climate-card', entity: 'climate.living_room', name: 'Living room climate' } },
+  { id: 'media', room: 'Living room', config: { type: 'custom:still-media-card', entity: 'media_player.living_room', name: 'Living room speaker' } },
   { id: 'cover', room: 'Living room', config: { type: 'custom:still-cover-card', entity: 'cover.living_room', name: 'Linen curtains' } },
-  { id: 'bedside', room: 'Bedroom', config: { type: 'custom:still-light-card', entity: 'light.bedroom', name: 'Bedside lamp' } },
-  { id: 'fan', room: 'Bedroom', config: { type: 'custom:still-fan-card', entity: 'fan.bedroom', name: 'A breath of fresh air' } },
-  { id: 'switch', room: 'Kitchen', config: { type: 'custom:still-entity-card', entity: 'switch.coffee_machine', name: 'Coffee machine' } },
+  { id: 'bedside', room: 'Bedroom', config: { type: 'custom:still-light-card', entity: 'light.bedroom', name: 'Bedside lamp', layout: 'tile' } },
+  { id: 'fan', room: 'Bedroom', config: { type: 'custom:still-fan-card', entity: 'fan.bedroom', name: 'Bedroom fan' } },
+  { id: 'switch', room: 'Kitchen', config: { type: 'custom:still-toggle-card', entity: 'switch.coffee_machine', name: 'Coffee machine' } },
   { id: 'scene', room: 'Living room', config: { type: 'custom:still-scene-card', entity: 'scene.slow_evening', name: 'Slow evening', subtitle: 'Dim the lights. Take a breath.' } },
   { id: 'night', room: 'Bedroom', config: { type: 'custom:still-scene-card', entity: 'scene.goodnight', name: 'Good night', icon: 'mdi:weather-night', subtitle: 'Let the house wind down.' } },
 ];
-const accents = [{ name: 'Sage', value: '#4c745d', dark: '#a8c5ae' }, { name: 'Clay', value: '#996956', dark: '#d9ad95' }, { name: 'Ocean', value: '#4a6f91', dark: '#a0bbd9' }, { name: 'Graphite', value: '#5f606b', dark: '#c1c1cf' }];
+const solarConfig: StillConfig = { type: 'custom:still-solar-card', entity: 'sensor.solar_power', name: 'Solar & energy', subtitle: 'Live energy flow', solar: { home_power: 'sensor.home_power', grid_power: 'sensor.grid_power', battery_level: 'sensor.battery_level', battery_power: 'sensor.battery_power', energy_today: 'sensor.solar_today' } };
+const accents = [{ name: 'Blue', value: '#0066d6', dark: '#80b5ff' }, { name: 'Clay', value: '#996956', dark: '#d9ad95' }, { name: 'Ocean', value: '#4a6f91', dark: '#a0bbd9' }, { name: 'Graphite', value: '#5f606b', dark: '#c1c1cf' }];
 
 class StillDemo extends LitElement {
   static properties = { page: { state: true }, room: { state: true }, appearance: { state: true }, accent: { state: true }, radius: { state: true }, variant: { state: true }, density: { state: true }, toast: { state: true }, hass: { state: true }, editing: { state: true }, editorError: { state: true }, infoId: { state: true }, studioOpen: { state: true }, overrides: { state: true } };
@@ -32,7 +33,7 @@ class StillDemo extends LitElement {
   private room = 'All rooms';
   private appearance = 'light';
   private accent = 0;
-  private radius = 22;
+  private radius = 24;
   private variant: StillConfig['variant'] = 'soft';
   private density: StillConfig['density'] = 'comfortable';
   private toast = '';
@@ -41,7 +42,7 @@ class StillDemo extends LitElement {
   private editorPreview?: StillConfig;
   private editorError = '';
   private infoId = '';
-  private studioOpen = true;
+  private studioOpen = false;
   private overrides: Record<string, StillConfig> = {};
   private toastTimer?: ReturnType<typeof setTimeout>;
   private returnFocus?: HTMLElement;
@@ -107,7 +108,7 @@ class StillDemo extends LitElement {
     document.documentElement.dataset.appearance = this.appearance;
     document.documentElement.style.setProperty('--still-accent', this.appearance === 'dark' ? theme.dark : theme.value);
     document.documentElement.style.setProperty('--still-radius', `${this.radius}px`);
-    document.documentElement.style.setProperty('--still-on-accent', this.appearance === 'dark' ? '#1c2b20' : '#fff');
+    document.documentElement.style.setProperty('--still-on-accent', this.appearance === 'dark' ? '#101827' : '#fff');
     try { localStorage.setItem('still-style', JSON.stringify({ appearance: this.appearance, accent: this.accent, radius: this.radius, variant: this.variant, density: this.density })); } catch { /* Preview works without storage. */ }
     if (this.pendingFocus) { this.querySelector<HTMLElement>('.dialog button')?.focus(); this.pendingFocus = false; }
   }
@@ -131,19 +132,19 @@ class StillDemo extends LitElement {
 
   private downloadTheme() {
     const chosen = accents[this.accent];
-    const yaml = stringify({ 'Still Custom': { 'primary-color': chosen.value, 'accent-color': chosen.value, 'still-accent': 'var(--primary-color)', 'still-radius': `${this.radius}px`, 'still-padding': this.density === 'compact' ? '14px' : '20px', 'still-font': 'system-ui, sans-serif', 'ha-card-border-radius': `${this.radius}px`, modes: { light: { 'primary-background-color': '#f5f6f2', 'primary-text-color': '#28332e', 'secondary-text-color': '#606a62', 'card-background-color': '#ffffff', 'still-surface': '#ffffff', 'still-muted': '#606a62', 'still-border-color': '#e3e8df', 'still-subtle': '#f1f4ee', 'still-on-accent': '#ffffff' }, dark: { 'primary-color': chosen.dark, 'accent-color': chosen.dark, 'primary-background-color': '#191f1c', 'primary-text-color': '#e6ece3', 'secondary-text-color': '#a5afa5', 'card-background-color': '#242c26', 'still-surface': '#242c26', 'still-muted': '#a5afa5', 'still-border-color': '#354036', 'still-subtle': '#2c352e', 'still-on-accent': '#1c2b20' } } } });
+    const yaml = stringify({ 'Still Custom': { 'primary-color': chosen.value, 'accent-color': chosen.value, 'still-accent': 'var(--primary-color)', 'still-radius': `${this.radius}px`, 'still-padding': this.density === 'compact' ? '14px' : '20px', 'still-font': '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', 'ha-card-border-radius': `${this.radius}px`, modes: { light: { 'primary-background-color': '#f2f2f7', 'primary-text-color': '#1c1c1e', 'secondary-text-color': '#63636c', 'card-background-color': '#ffffff', 'still-surface': '#ffffff', 'still-muted': '#63636c', 'still-border-color': '#e5e5ea', 'still-subtle': '#f2f2f7', 'still-on-accent': '#ffffff' }, dark: { 'primary-color': chosen.dark, 'accent-color': chosen.dark, 'primary-background-color': '#0b0b10', 'primary-text-color': '#f5f5f7', 'secondary-text-color': '#aaaab2', 'card-background-color': '#1c1c1e', 'still-surface': '#1c1c1e', 'still-muted': '#aaaab2', 'still-border-color': '#38383d', 'still-subtle': '#2c2c2e', 'still-on-accent': '#101827' } } } });
     const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));
     const link = document.createElement('a'); link.href = url; link.download = 'still-custom.yaml'; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     this.notify('Your theme is downloaded. Card variant is set per card.');
   }
 
-  private reset() { this.appearance = 'light'; this.accent = 0; this.radius = 22; this.variant = 'soft'; this.density = 'comfortable'; this.notify('Back to a quiet beginning'); }
+  private reset() { this.appearance = 'light'; this.accent = 0; this.radius = 24; this.variant = 'soft'; this.density = 'comfortable'; this.notify('Back to a quiet beginning'); }
 
   private sidebar() {
     return html`<aside class="sidebar"><a class="brand" href="#" @click=${(event: Event) => { event.preventDefault(); this.page = 'overview'; }}><span class="brand-mark">${this.icon('mdi:leaf')}</span><span>still<span class="brand-dot">.</span></span></a><div class="brand-caption">HOME, IN BALANCE</div>
       <div class="nav-label">YOUR SPACE</div><nav aria-label="Main navigation">
-        ${[['overview', 'Overview', 'mdi:view-dashboard-outline'], ['cards', 'Card collection', 'mdi:view-grid-outline'], ['setup', 'Getting started', 'mdi:code-tags']].map(([page, label, icon]) => html`<button class="nav-item ${this.page === page ? 'selected' : ''}" aria-current=${this.page === page ? 'page' : nothing} @click=${() => { this.page = page; window.scrollTo(0, 0); }}>${this.icon(icon)}${label}${page === 'cards' ? html`<span class="nav-count">10</span>` : nothing}</button>`)}
+        ${[['overview', 'Overview', 'mdi:view-dashboard-outline'], ['cards', 'Card collection', 'mdi:view-grid-outline'], ['setup', 'Getting started', 'mdi:code-tags']].map(([page, label, icon]) => html`<button class="nav-item ${this.page === page ? 'selected' : ''}" aria-current=${this.page === page ? 'page' : nothing} @click=${() => { this.page = page; window.scrollTo(0, 0); }}>${this.icon(icon)}${label}${page === 'cards' ? html`<span class="nav-count">12</span>` : nothing}</button>`)}
       </nav><div class="sidebar-note">Less noise.<br />More home.<span>A collection for<br />Home Assistant.</span></div><div class="profile"><span class="avatar">A</span><div>Alex's home<small>Local demo</small></div><span class="online-dot"></span></div>
     </aside>`;
   }
@@ -162,17 +163,17 @@ class StillDemo extends LitElement {
   private overview() {
     const visible = entries.filter((entry) => this.room === 'All rooms' || entry.room === this.room);
     const live = this.hass.states['light.living_room'].state !== 'unavailable';
-    return html`<div class="welcome"><div><div class="eyebrow">A MOMENT FOR HOME</div><h1>Good evening, Alex<span>.</span></h1><p>The day can slow down now.</p></div><span class="welcome-leaf">${this.icon('mdi:leaf')}</span></div>
-      <div class="home-summary">${this.card({ type: 'custom:still-weather-card', entity: 'weather.home', name: 'A little fresh air', variant: this.variant, density: this.density }, 'weather')}${this.card({ type: 'custom:still-entity-card', entity: 'sensor.daily_energy', name: 'Energy today', variant: this.variant, density: this.density, subtitle: 'Small footprint. Good feeling.' }, 'energy')}</div>
-      <div class="section-heading"><div><h2>Your home, at a glance</h2><p>A few small comforts, all in one place.</p></div>${this.card({ type: 'custom:still-chips-card', chips: [{ content: 'Home', icon: 'mdi:home-outline' }, { entity: 'sensor.indoor_temperature', icon: 'mdi:thermometer', content: '21.5 °C inside' }] }, 'chips')}</div>
+    return html`<div class="welcome"><div><div class="eyebrow">YOUR HOME</div><h1>Good evening, Alex<span>.</span></h1><p>Everything feels just right.</p></div><span class="welcome-leaf">${this.icon('mdi:home-outline')}</span></div>
+      <div class="home-summary">${this.card({ type: 'custom:still-weather-card', entity: 'weather.home', name: 'Outside', variant: this.variant, density: this.density }, 'weather')}${this.card({ ...solarConfig, variant: this.variant, density: this.density }, 'solar')}</div>
+      <div class="section-heading"><div><h2>Your favourites</h2><p>The little things that make it home.</p></div>${this.card({ type: 'custom:still-chips-card', chips: [{ content: 'Home', icon: 'mdi:home-outline' }, { entity: 'sensor.indoor_temperature', icon: 'mdi:thermometer', content: '21.5 °C inside' }] }, 'chips')}</div>
       <div class="room-tabs" role="group" aria-label="Filter by room">${['All rooms', 'Living room', 'Bedroom', 'Kitchen'].map((room) => html`<button class=${this.room === room ? 'active' : ''} aria-pressed=${this.room === room} @click=${() => { this.room = room; }}>${room}</button>`)}</div>
-      <div class="dashboard-grid">${repeat(visible, (entry) => entry.id, (entry) => html`<div class="card-cell">${this.card(this.config(entry), entry.id)}<button class="edit-card" aria-label=${`Edit ${entry.config.name}`} title="Edit card" @click=${() => this.edit(entry)}>${this.icon('mdi:cog-outline')}</button></div>`)}</div>
+      <div class="dashboard-grid">${repeat(visible, (entry) => entry.id, (entry) => html`<div class="card-cell" data-card=${entry.id}>${this.card(this.config(entry), entry.id)}<button class="edit-card" aria-label=${`Edit ${entry.config.name}`} title="Edit card" @click=${() => this.edit(entry)}>${this.icon('mdi:cog-outline')}</button></div>`)}</div>
       <div class="demo-footer"><span><span class="online-dot"></span> Interactive preview · sample devices</span><button @click=${() => { const entity = this.hass.states['light.living_room']; this.hass = { ...this.hass, states: { ...this.hass.states, 'light.living_room': { ...entity, state: live ? 'unavailable' : 'on' } } }; this.notify(live ? 'Reading light is now unavailable' : 'Reading light reconnected'); }}>${live ? 'Try an unavailable device' : 'Reconnect reading light'}${this.icon('mdi:arrow-top-right')}</button></div>`;
   }
 
   private collection() {
-    return html`<div class="page-heading"><div class="eyebrow">THE COLLECTION</div><h1>A place for every thing<span>.</span></h1><p>Ten cards. One calm, consistent system.</p></div><div class="collection-grid">${getCardDefinitions().map((definition) => {
-      const entry = entries.find((entry) => entry.id === definition.kind) ?? (definition.kind === 'entity' ? { id: 'entity', room: '', config: { type: 'custom:still-entity-card', entity: 'sensor.humidity', name: 'Humidity' } } : definition.kind === 'weather' ? { id: 'weather', room: '', config: { type: 'custom:still-weather-card', entity: 'weather.home', name: 'Outside' } } : definition.kind === 'title' ? { id: 'title', room: '', config: { type: 'custom:still-title-card', name: 'The little things', subtitle: 'Give your dashboard a little breathing room.' } } : { id: 'chips', room: '', config: { type: 'custom:still-chips-card', chips: [{ entity: 'person.alex', name: 'Alex', icon: 'mdi:home-outline' }, { entity: 'sensor.indoor_temperature', icon: 'mdi:thermometer' }] } });
+    return html`<div class="page-heading"><div class="eyebrow">THE COLLECTION</div><h1>A place for every thing<span>.</span></h1><p>Twelve cards. One familiar, consistent system.</p></div><div class="collection-grid">${getCardDefinitions().map((definition) => {
+      const entry = entries.find((entry) => entry.id === definition.kind || (definition.kind === 'toggle' && entry.id === 'switch')) ?? (definition.kind === 'solar' ? { id: 'solar', room: '', config: solarConfig } : definition.kind === 'entity' ? { id: 'entity', room: '', config: { type: 'custom:still-entity-card', entity: 'sensor.humidity', name: 'Humidity' } } : definition.kind === 'weather' ? { id: 'weather', room: '', config: { type: 'custom:still-weather-card', entity: 'weather.home', name: 'Outside' } } : definition.kind === 'title' ? { id: 'title', room: '', config: { type: 'custom:still-title-card', name: 'The little things', subtitle: 'Give your dashboard a little breathing room.' } } : { id: 'chips', room: '', config: { type: 'custom:still-chips-card', chips: [{ entity: 'person.alex', name: 'Alex', icon: 'mdi:home-outline' }, { entity: 'sensor.indoor_temperature', icon: 'mdi:thermometer' }] } });
       return html`<section class="collection-item"><div class="collection-label"><h2>${definition.name}</h2><button @click=${() => this.edit(entry)} aria-label=${`Configure ${definition.name}`}>${this.icon('mdi:code-tags')}</button></div><p>${definition.description}</p>${this.card(this.config(entry), `collection-${definition.kind}`)}</section>`;
     })}</div>`;
   }
@@ -198,7 +199,7 @@ class StillDemo extends LitElement {
   }
 
   render() {
-    return html`<div class="app-shell" ?inert=${!!this.editing || !!this.infoId}>${this.sidebar()}<div class="main-shell"><header class="topbar"><div class="breadcrumb">Alex's home <span>/</span><strong>${this.page === 'overview' ? 'Overview' : this.page === 'cards' ? 'Card collection' : 'Getting started'}</strong></div><div class="topbar-right"><span class="preview-label"><span class="online-dot"></span>LOCAL PREVIEW</span><button class="customize-button" aria-pressed=${this.studioOpen} @click=${() => { this.studioOpen = !this.studioOpen; }}>${this.icon('mdi:tune-variant')}<span>Customize</span></button></div></header><div class="workspace ${this.studioOpen ? '' : 'studio-hidden'}"><main>${this.page === 'overview' ? this.overview() : this.page === 'cards' ? this.collection() : this.setup()}<footer class="page-footer"><span>still<span class="brand-dot">.</span></span><span>Thoughtfully simple. Quietly capable.</span><span>v0.1.0</span></footer></main>${this.studio()}</div></div></div>${this.dialog()}${this.toast ? html`<div class="toast" role="status">${this.icon('mdi:check')}${this.toast}</div>` : nothing}`;
+    return html`<div class="app-shell" ?inert=${!!this.editing || !!this.infoId}>${this.sidebar()}<div class="main-shell"><header class="topbar"><div class="breadcrumb">Alex's home <span>/</span><strong>${this.page === 'overview' ? 'Overview' : this.page === 'cards' ? 'Card collection' : 'Getting started'}</strong></div><div class="topbar-right"><span class="preview-label"><span class="online-dot"></span>LOCAL PREVIEW</span><button class="customize-button" aria-pressed=${this.studioOpen} @click=${() => { this.studioOpen = !this.studioOpen; }}>${this.icon('mdi:tune-variant')}<span>Customize</span></button></div></header><div class="workspace ${this.studioOpen ? '' : 'studio-hidden'}"><main>${this.page === 'overview' ? this.overview() : this.page === 'cards' ? this.collection() : this.setup()}<footer class="page-footer"><span>still<span class="brand-dot">.</span></span><span>Thoughtfully simple. Quietly capable.</span><span>v0.2.0</span></footer></main>${this.studio()}</div></div></div>${this.dialog()}${this.toast ? html`<div class="toast" role="status">${this.icon('mdi:check')}${this.toast}</div>` : nothing}`;
   }
 }
 

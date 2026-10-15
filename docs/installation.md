@@ -11,7 +11,7 @@ HACS installs the card module. The optional `still.yaml` theme is installed sepa
 ## Manual card and theme installation
 
 1. Copy `still-cards.js` into your Home Assistant configuration directory as `www/still-cards.js`. Restart Home Assistant if you created `www` for the first time.
-2. Enable Advanced mode in your user profile and open Settings → Dashboards → Resources. Add `/local/still-cards.js?v=0.1.0` as a JavaScript module.
+2. Enable Advanced mode in your user profile and open Settings → Dashboards → Resources. Add `/local/still-cards.js?v=0.2.0` as a JavaScript module.
 3. Copy `still.yaml` to `themes/still.yaml` in the same configuration directory.
 4. Merge this into your existing `frontend:` configuration:
 
@@ -38,7 +38,7 @@ If you use YAML resource mode, merge this into your existing Lovelace configurat
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /local/still-cards.js?v=0.1.0
+    - url: /local/still-cards.js?v=0.2.0
       type: module
 ```
 

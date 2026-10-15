@@ -17,6 +17,6 @@ export function resolveKind(config: StillConfig): string {
   const alias = config.type.match(/^custom:still-(.+)-card$/)?.[1];
   if (alias) return alias;
   const domain = domainOf(config.entity);
-  const map: Record<string, string> = { light: 'light', climate: 'climate', media_player: 'media', cover: 'cover', fan: 'fan', scene: 'scene', script: 'scene', button: 'scene', input_button: 'scene', weather: 'weather' };
+  const map: Record<string, string> = { light: 'light', switch: 'toggle', input_boolean: 'toggle', automation: 'toggle', climate: 'climate', media_player: 'media', cover: 'cover', fan: 'fan', scene: 'scene', script: 'scene', button: 'scene', input_button: 'scene', weather: 'weather' };
   return map[domain] ?? 'entity';
 }

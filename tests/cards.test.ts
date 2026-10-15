@@ -20,12 +20,12 @@ afterEach(() => { document.body.replaceChildren(); vi.restoreAllMocks(); });
 
 describe('card lifecycle and integration', () => {
   it('registers the collection and exposes Sections and masonry sizing', async () => {
-    expect(getCardDefinitions()).toHaveLength(10);
-    expect(window.customCards).toHaveLength(11);
+    expect(getCardDefinitions()).toHaveLength(12);
+    expect(window.customCards).toHaveLength(13);
     for (const entry of getCardDefinitions()) expect(customElements.get(`still-${entry.kind}-card`)).toBeDefined();
     const element = await card({ type: 'custom:still-climate-card', entity: 'climate.test' });
-    expect(element.getGridOptions()).toMatchObject({ columns: 12, min_columns: 9, rows: 5 });
-    expect(element.getCardSize()).toBe(5);
+    expect(element.getGridOptions()).toMatchObject({ columns: 12, min_columns: 9, rows: 6 });
+    expect(element.getCardSize()).toBe(6);
     expect(StillCard.getConfigElement()).toBeInstanceOf(StillCardEditor);
   });
 
@@ -105,9 +105,9 @@ describe('card lifecycle and integration', () => {
     expect(toggle.disabled).toBe(false);
   });
 
-  it('opens native more-info and does not toggle by tapping the header', async () => {
+  it('supports an explicit native more-info header action without toggling', async () => {
     const value = hass([entity('light.test')]);
-    const element = await card({ type: 'custom:still-card', entity: 'light.test' }, value);
+    const element = await card({ type: 'custom:still-card', entity: 'light.test', tap_action: { action: 'more-info' } }, value);
     const listener = vi.fn(); document.body.addEventListener('hass-more-info', listener, { once: true });
     element.shadowRoot!.querySelector<HTMLButtonElement>('.head-button')!.click();
     expect(listener.mock.calls[0][0].detail).toEqual({ entityId: 'light.test' });
@@ -116,6 +116,73 @@ describe('card lifecycle and integration', () => {
 });
 
 describe('domain controls', () => {
+  it('opens a tile’s full controls in a detail sheet and preserves it across updates', async () => {
+    const config: StillConfig = { type: 'custom:still-light-card', entity: 'light.test', layout: 'tile' };
+    const value = hass([entity('light.test', 'on', { supported_color_modes: ['brightness'], brightness: 128 })]);
+    const element = await card(config, value);
+    expect(element.shadowRoot!.querySelector('input')).toBeNull();
+    expect(element.getCardSize()).toBe(3);
+    element.shadowRoot!.querySelector<HTMLButtonElement>('.head-button')!.click();
+    await element.updateComplete;
+    expect(element.shadowRoot!.querySelector('dialog')?.open).toBe(true);
+    expect(element.shadowRoot!.querySelector('dialog input[aria-label=Brightness]')).not.toBeNull();
+    expect(value.callService).not.toHaveBeenCalled();
+    element.setConfig({ ...config });
+    element.hass = { ...value, states: { 'light.test': entity('light.test', 'off', { supported_color_modes: ['brightness'] }) } };
+    await element.updateComplete;
+    expect(element.shadowRoot!.querySelector('dialog')?.open).toBe(true);
+    expect(element.shadowRoot!.querySelector<HTMLButtonElement>('dialog [role=switch]')!.getAttribute('aria-checked')).toBe('false');
+    element.setConfig({ ...config, entity: 'light.other' });
+    await element.updateComplete;
+    expect(element.shadowRoot!.querySelector('dialog')).toBeNull();
+  });
+
+  it('uses the entity preset names and feature flag without inventing modes', async () => {
+    const value = hass([entity('climate.test', 'heat', { temperature: 22, supported_features: 17, preset_modes: ['home', 'eco', 'my_custom_mode'], preset_mode: 'eco' })]);
+    const element = await card({ type: 'custom:still-climate-card', entity: 'climate.test' }, value);
+    const presets = element.shadowRoot!.querySelectorAll<HTMLButtonElement>('.preset');
+    expect([...presets].map((button) => button.textContent)).toEqual(['Home', 'Eco', 'My custom mode']);
+    expect(presets[1].getAttribute('aria-pressed')).toBe('true');
+    presets[2].click();
+    await vi.waitFor(() => expect(value.callService).toHaveBeenCalledWith('climate', 'set_preset_mode', { entity_id: 'climate.test', preset_mode: 'my_custom_mode' }, undefined));
+    element.hass = { ...value, states: { 'climate.test': entity('climate.test', 'heat', { supported_features: 1, preset_modes: ['eco'] }) } };
+    await element.updateComplete;
+    expect(element.shadowRoot!.querySelector('.preset')).toBeNull();
+    element.setConfig({ type: 'custom:still-climate-card', entity: 'climate.test', show_presets: false });
+    element.hass = value;
+    await element.updateComplete;
+    expect(element.shadowRoot!.querySelector('.preset')).toBeNull();
+  });
+
+  it('automatically chooses a toggle and calls its device domain', async () => {
+    const value = hass([entity('input_boolean.test', 'off')]);
+    const element = await card({ type: 'custom:still-card', entity: 'input_boolean.test' }, value);
+    expect(element.shadowRoot!.querySelector('ha-card')?.getAttribute('data-kind')).toBe('toggle');
+    element.shadowRoot!.querySelector<HTMLButtonElement>('[role=switch]')!.click();
+    expect(value.callService).toHaveBeenCalledWith('input_boolean', 'toggle', { entity_id: 'input_boolean.test' }, undefined);
+  });
+
+  it('updates solar from related sensors, handles zero charge, and reverses grid signs explicitly', async () => {
+    const config: StillConfig = { type: 'custom:still-solar-card', entity: 'sensor.solar', solar: { home_power: 'sensor.home', grid_power: 'sensor.grid', battery_level: 'sensor.battery', energy_today: 'sensor.today' } };
+    const value = hass([entity('sensor.solar', '4200', { unit_of_measurement: 'W' }), entity('sensor.home', '1.6', { unit_of_measurement: 'kW' }), entity('sensor.grid', '-1400', { unit_of_measurement: 'W' }), entity('sensor.battery', '0', { unit_of_measurement: '%' }), entity('sensor.today', '18600', { unit_of_measurement: 'Wh' })]);
+    const element = await card(config, value);
+    expect(element.shadowRoot!.textContent).toContain('4.2 kW');
+    expect(element.shadowRoot!.textContent).toContain('1.6 kW');
+    expect(element.shadowRoot!.textContent).toContain('Exporting');
+    expect(element.shadowRoot!.textContent).toContain('0%');
+    expect(element.shadowRoot!.textContent).toContain('18.6 kWh');
+    element.hass = { ...value, states: { ...value.states, 'sensor.home': entity('sensor.home', '800', { unit_of_measurement: 'W' }) } };
+    await element.updateComplete;
+    expect(element.shadowRoot!.textContent).toContain('800 W');
+    element.setConfig({ ...config, solar: { ...config.solar, grid_export_positive: true } });
+    await element.updateComplete;
+    expect(element.shadowRoot!.textContent).toContain('Importing');
+    element.hass = { ...value, states: { ...value.states, 'sensor.grid': entity('sensor.grid', 'unavailable') } };
+    await element.updateComplete;
+    expect(element.shadowRoot!.textContent).not.toContain('Importing');
+    expect(value.callService).not.toHaveBeenCalled();
+  });
+
   it('hides a dimmer on an on/off light and sends brightness only on change', async () => {
     const value = hass([entity('light.test', 'on', { supported_color_modes: ['onoff'] })]);
     const element = await card({ type: 'custom:still-card', entity: 'light.test' }, value);
@@ -127,6 +194,19 @@ describe('domain controls', () => {
     expect(value.callService).not.toHaveBeenCalled();
     slider.dispatchEvent(new Event('change', { bubbles: true }));
     expect(value.callService).toHaveBeenCalledWith('light', 'turn_on', { entity_id: 'light.test', brightness_pct: 35 }, undefined);
+  });
+
+  it('restores a rejected slider edit to the Home Assistant state', async () => {
+    const value = hass([entity('light.test', 'on', { supported_color_modes: ['brightness'], brightness: 128 })]);
+    value.callService = vi.fn().mockRejectedValue(new Error('Permission denied'));
+    const element = await card({ type: 'custom:still-light-card', entity: 'light.test' }, value);
+    const slider = element.shadowRoot!.querySelector<HTMLInputElement>('input')!;
+    slider.value = '35';
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+    slider.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(element.shadowRoot!.querySelector('[role=alert]')?.textContent).toContain('Permission denied'));
+    expect(slider.value).toBe('50');
+    expect(element.shadowRoot!.querySelector('output')!.value).toBe('50%');
   });
 
   it('honors thermostat step, bounds, and Fahrenheit', async () => {
@@ -198,7 +278,7 @@ describe('visual editor', () => {
     document.body.append(editor);
     await editor.updateComplete;
     const selections = Array.from(editor.shadowRoot!.querySelectorAll('select'));
-    expect(selections.map((select) => select.value)).toEqual(['light', 'minimal', 'compact']);
+    expect(selections.map((select) => select.value)).toEqual(['light', 'minimal', 'compact', 'panel']);
   });
 
   it('emits a composed config event while preserving advanced options', async () => {

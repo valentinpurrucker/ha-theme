@@ -3,6 +3,8 @@ import { StillCardEditor } from './editor';
 import { registerCardDefinition, getCardDefinitions } from './core/registry';
 import { entityDefinition } from './cards/entity';
 import { lightDefinition } from './cards/light';
+import { toggleDefinition } from './cards/toggle';
+import { solarDefinition } from './cards/solar';
 import { climateDefinition } from './cards/climate';
 import { mediaDefinition } from './cards/media';
 import { coverDefinition } from './cards/cover';
@@ -12,7 +14,7 @@ import { weatherDefinition } from './cards/weather';
 import { chipsDefinition, titleDefinition } from './cards/layout';
 import type { HomeAssistant } from './core/types';
 
-const definitions = [entityDefinition, lightDefinition, climateDefinition, mediaDefinition, coverDefinition, fanDefinition, sceneDefinition, weatherDefinition, chipsDefinition, titleDefinition];
+const definitions = [entityDefinition, lightDefinition, toggleDefinition, climateDefinition, solarDefinition, mediaDefinition, coverDefinition, fanDefinition, sceneDefinition, weatherDefinition, chipsDefinition, titleDefinition];
 definitions.forEach(registerCardDefinition);
 if (!customElements.get('still-card-editor')) customElements.define('still-card-editor', StillCardEditor);
 if (!customElements.get('still-card')) customElements.define('still-card', StillCard);
@@ -28,13 +30,13 @@ for (const definition of getCardDefinitions()) {
       static getStubConfig(hass?: HomeAssistant) {
         if (definition.kind === 'title') return { name: 'At home', subtitle: 'A little space to breathe.' };
         if (definition.kind === 'chips') return { chips: [{ content: 'Home', icon: 'mdi:home-outline' }] };
-        const entity = Object.keys(hass?.states ?? {}).find((id) => !definition.domains || definition.domains.includes(id.split('.')[0]));
+        const entity = Object.keys(hass?.states ?? {}).find((id) => (!definition.domains || definition.domains.includes(id.split('.')[0])) && (definition.kind !== 'solar' || ['W', 'kW'].includes(String(hass?.states[id]?.attributes.unit_of_measurement))));
         return { entity: entity ?? `${definition.domains?.[0] ?? 'sensor'}.example` };
       }
     });
   }
   if (!window.customCards.some((card) => card.type === tag)) window.customCards.push({ type: tag, name: `Still · ${definition.name}`, description: definition.description, preview: true,
-    getEntitySuggestion: (_hass: HomeAssistant, entityId: string) => definition.requiresEntity === false || (definition.domains && !definition.domains.includes(entityId.split('.')[0])) ? null : { config: { type: `custom:${tag}`, entity: entityId } },
+    getEntitySuggestion: (hass: HomeAssistant, entityId: string) => definition.requiresEntity === false || (definition.domains && !definition.domains.includes(entityId.split('.')[0])) || (definition.kind === 'solar' && !['W', 'kW'].includes(String(hass.states[entityId]?.attributes.unit_of_measurement))) ? null : { config: { type: `custom:${tag}`, entity: entityId } },
   });
 }
 

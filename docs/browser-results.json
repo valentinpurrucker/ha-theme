@@ -1,4 +1,5 @@
 {
+  "dialogAccessibility": [],
   "darkAccessibility": [],
   "sectionsSizing": [
     {
@@ -12,7 +13,17 @@
       "vertical": 0
     },
     {
+      "kind": "toggle",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
       "kind": "climate",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "solar",
       "horizontal": 0,
       "vertical": 0
     },
@@ -81,8 +92,8 @@
     }
   ],
   "productionBundle": {
-    "cardKinds": 10,
-    "pickerEntries": 11,
+    "cardKinds": 12,
+    "pickerEntries": 13,
     "command": [
       "light",
       "toggle",

@@ -18,19 +18,19 @@ The companion theme remains an optional `still.yaml` download from the same rele
 
 1. Set the intended version in `package.json`, update release notes as needed, and commit the changes.
 2. Run `bun install --frozen-lockfile` and `bun run check`.
-3. Verify the exact tag against the current artifacts, for example `RELEASE_TAG=v0.1.0 bun run check:release`.
+3. Verify the exact tag against the current artifacts, for example `RELEASE_TAG=v0.2.0 bun run check:release`.
 4. Push the source commit, create the matching version tag, and push that tag:
 
 ```sh
 git push origin main
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 5. Publish a GitHub release for that tag and attach `release/still-cards.js` as a raw asset. Attach `still.yaml`, `hacs.json`, license files, `SHA256SUMS`, and the manual archive as companion assets. For example:
 
 ```sh
-gh release create v0.1.0 release/still-cards.js release/still.yaml release/hacs.json release/LICENSE release/THIRD_PARTY_LICENSES.txt release/SHA256SUMS release/still-cards-0.1.0.tar.gz --repo valentinpurrucker/ha-theme --verify-tag --title "Still Cards v0.1.0" --notes-file .github/release-notes.md
+gh release create v0.2.0 release/still-cards.js release/still.yaml release/hacs.json release/LICENSE release/THIRD_PARTY_LICENSES.txt release/SHA256SUMS release/still-cards-0.2.0.tar.gz --repo valentinpurrucker/ha-theme --verify-tag --title "Still Cards v0.2.0" --notes-file .github/release-notes.md
 ```
 
 The tag must match `v` plus the package version exactly. An existing published version should not be reused; bump the version for later changes. A tag alone is not enough: the release and JavaScript asset must be published.

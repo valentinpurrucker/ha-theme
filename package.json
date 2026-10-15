@@ -1,6 +1,6 @@
 {
   "name": "still-cards",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Quiet, composable Home Assistant cards and a matching theme.",
   "type": "module",
   "private": true,

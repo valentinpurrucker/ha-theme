@@ -77,3 +77,10 @@ Defer pop-up/navigation systems, card nesting and arbitrary layouts, CSS editor 
 
 - [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom): the README lists focused cards including chips, climate, cover, entity, fan, light, media, template and title, says all cards support the dashboard UI editor, and documents optional companion themes. Useful reference for compact domain cards, reusable entity visuals, editor coverage, and a restrained shared style.
 - [Bubble Card](https://github.com/Clooos/Bubble-Card): its README lists button, media player, cover and climate alongside pop-up, select, separator and button stack; options are editable in HA's editor, with shared styling, templates, actions, and modules. Useful reference for pill/bubble silhouettes, compact control grouping, and deep customization. Treat pop-ups/modules/CSS templating as later scope rather than a v1 requirement.
+
+
+## v0.2 refinement
+
+The initial scope above records the original research. v0.2 implements a shared detail sheet, climate presets, compact switch tiles, and a solar summary in response to the dashboard refinement. It keeps the renderer registry and shared tokens, uses system fonts, and adds light/dark domain colors for switches, lights, weather, and solar.
+
+Climate presets use the entity’s `preset_modes`, selected `preset_mode`, and PRESET_MODE feature flag (16), with `climate.set_preset_mode`. Solar maps explicit power sensors (W/kW) separately from daily energy (Wh/kWh); no unmeasured history, lifetime-counter reset, or battery-direction convention is assumed. See [climate entity contract](https://developers.home-assistant.io/docs/core/entity/climate/), [core climate constants](https://github.com/home-assistant/core/blob/dev/homeassistant/components/climate/const.py), [climate actions](https://www.home-assistant.io/integrations/climate/), and [HA energy management](https://www.home-assistant.io/docs/energy/).

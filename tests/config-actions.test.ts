@@ -27,8 +27,8 @@ describe('configuration validation', () => {
     for (const section of dashboard.views[0].sections) for (const config of section.cards) expect(() => validateConfig(config)).not.toThrow();
     const theme = parse(readFileSync('themes/still.yaml', 'utf8')).Still;
     expect(theme.modes.light['still-surface']).toBe('#ffffff');
-    expect(theme.modes.dark['still-surface']).toBe('#242c26');
-    expect(theme['still-radius']).toBe('22px');
+    expect(theme.modes.dark['still-surface']).toBe('#1c1c1e');
+    expect(theme['still-radius']).toBe('24px');
   });
 });
 

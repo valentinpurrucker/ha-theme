@@ -23,6 +23,32 @@ try {
   await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=light]')?.shadowRoot?.querySelector('output')?.value === '42%');
   await page.locator('still-card[data-demo-id=climate]').getByRole('button', { name: 'Increase target temperature' }).click();
   await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=climate]')?.shadowRoot?.querySelector('.value')?.textContent?.includes('22.5'));
+  const climate = page.locator('still-card[data-demo-id=climate]');
+  await climate.getByRole('button', { name: 'Eco', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=climate]')?.shadowRoot?.querySelectorAll('.preset')[1]?.getAttribute('aria-pressed') === 'true');
+  const climateHeader = climate.getByRole('button', { name: 'More about Living room climate' });
+  await climateHeader.click();
+  const climateSheet = climate.getByRole('dialog');
+  await climateSheet.getByRole('button', { name: 'Away', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=climate]')?.shadowRoot?.querySelector('dialog .preset:last-child')?.getAttribute('aria-pressed') === 'true');
+  assert.equal(await climateSheet.isVisible(), true, 'State updates must preserve the open sheet');
+  await climateSheet.getByRole('button', { name: 'Close details' }).focus();
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await climateSheet.getByRole('button', { name: 'Open in Home Assistant' }).evaluate((node) => node.getRootNode() instanceof ShadowRoot && (node.getRootNode() as ShadowRoot).activeElement === node), true, 'Modal must trap backward keyboard focus');
+  await page.keyboard.press('Tab');
+  assert.equal(await climateSheet.getByRole('button', { name: 'Close details' }).evaluate((node) => (node.getRootNode() as ShadowRoot).activeElement === node), true);
+  findings.dialogAccessibility = (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations;
+  await page.screenshot({ path: 'docs/screenshots/climate-details.png' });
+  await page.keyboard.press('Escape');
+  await climateSheet.waitFor({ state: 'detached' });
+  assert.equal(await climateHeader.evaluate((node) => (node.getRootNode() as ShadowRoot).activeElement === node), true, 'Closing must return focus');
+  const bedside = page.locator('still-card[data-demo-id=bedside]');
+  assert.equal(await bedside.getByRole('slider').count(), 0);
+  await bedside.getByRole('button', { name: 'More about Bedside lamp' }).click();
+  await bedside.getByRole('dialog').getByRole('slider', { name: 'Warmth' }).waitFor();
+  await bedside.getByRole('dialog').getByRole('switch').click();
+  assert.equal(await bedside.getByRole('dialog').isVisible(), true);
+  await bedside.getByRole('dialog').getByRole('button', { name: 'Close details' }).click();
   await page.locator('still-card[data-demo-id=media]').getByRole('button', { name: 'Pause', exact: true }).click();
   await page.locator('still-card[data-demo-id=media]').getByRole('button', { name: 'Play', exact: true }).waitFor();
   await page.locator('still-card[data-demo-id=cover]').getByRole('button', { name: 'Close cover' }).click();
@@ -46,6 +72,7 @@ try {
   await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('.dialog .primary-button')?.disabled);
   assert.ok((await page.locator('still-card[data-demo-id=editor-preview] .value').textContent())?.includes('22.5'));
   await page.getByRole('button', { name: 'Close editor' }).click();
+  await page.getByRole('button', { name: 'Customize', exact: true }).click();
   await page.getByRole('button', { name: 'Outline', exact: true }).click();
   assert.equal(await light.locator('ha-card').getAttribute('data-variant'), 'outlined');
   await page.getByRole('button', { name: 'Compact', exact: true }).click();
@@ -56,13 +83,16 @@ try {
   await page.getByRole('button', { name: 'Ocean accent' }).click();
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--still-accent').trim()), '#4a6f91');
   await page.getByRole('button', { name: 'After dark' }).click();
+  await page.getByRole('button', { name: 'Customize', exact: true }).click();
   await page.locator('.toast').waitFor({ state: 'hidden' });
   await page.screenshot({ path: 'docs/screenshots/desktop-dark.png', fullPage: true });
   findings.darkAccessibility = (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations.map((violation) => ({ id: violation.id, impact: violation.impact, nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })) }));
+  await page.getByRole('button', { name: 'Customize', exact: true }).click();
   await page.getByRole('button', { name: 'Reset to Still' }).click();
+  await page.getByRole('button', { name: 'Customize', exact: true }).click();
   await page.locator('.toast').waitFor({ state: 'hidden' });
   await page.getByRole('button', { name: 'Card collection' }).click();
-  assert.equal(await page.locator('.collection-item').count(), 10);
+  assert.equal(await page.locator('.collection-item').count(), 12);
   findings.sectionsSizing = await page.evaluate(async () => {
     const results = [];
     for (const source of document.querySelectorAll('still-card')) {
@@ -102,6 +132,15 @@ try {
     assert.equal(measurement.overflows.length, 0, `Card overflow at ${width}px: ${JSON.stringify(measurement.overflows)}`);
     responsive.push(measurement);
     if (width === 390) await page.screenshot({ path: 'docs/screenshots/mobile.png', fullPage: true });
+    if (width <= 390) {
+      await climateHeader.click();
+      await climateSheet.waitFor();
+      assert.ok(await climateSheet.evaluate((node) => node.scrollWidth <= node.clientWidth + 1), `Detail sheet overflows at ${width}px`);
+      assert.ok(await climateSheet.evaluate((node) => node.getBoundingClientRect().bottom <= innerHeight), 'Mobile sheet must fit the screen');
+      if (width === 390) await page.screenshot({ path: 'docs/screenshots/mobile-details.png' });
+      await page.mouse.click(2, 2);
+      await climateSheet.waitFor({ state: 'detached' });
+    }
   }
   findings.responsive = responsive;
   const bundlePage = await context.newPage();
@@ -120,18 +159,19 @@ try {
   </script></body></html>`;
   await bundlePage.route('**/__still_bundle_check', (route) => route.fulfill({ contentType: 'text/html', body: harness }));
   await bundlePage.goto(`${origin}/__still_bundle_check`);
-  await bundlePage.waitForFunction(() => (window as unknown as { bundleReady: number }).bundleReady === 10);
+  await bundlePage.waitForFunction(() => (window as unknown as { bundleReady: number }).bundleReady === 12);
   await bundlePage.getByRole('switch').click();
   const bundleCommands = await bundlePage.evaluate(() => (window as unknown as { commands: unknown[] }).commands);
   assert.deepEqual(bundleCommands, [['light', 'toggle', { entity_id: 'light.test' }, undefined]]);
   assert.equal(await bundlePage.getByRole('slider', { name: 'Brightness' }).count(), 1);
-  findings.productionBundle = { cardKinds: 10, pickerEntries: await bundlePage.evaluate(() => window.customCards?.length), command: bundleCommands[0] };
+  findings.productionBundle = { cardKinds: 12, pickerEntries: await bundlePage.evaluate(() => window.customCards?.length), command: bundleCommands[0] };
   await bundlePage.close();
   findings.consoleErrors = errors;
   await writeFile('docs/browser-results.json', JSON.stringify(findings, null, 2) + '\n');
   assert.deepEqual(errors, [], 'Unexpected browser errors');
   assert.deepEqual(findings.lightAccessibility, [], 'Light theme accessibility violations');
   assert.deepEqual(findings.darkAccessibility, [], 'Dark theme accessibility violations');
+  assert.deepEqual(findings.dialogAccessibility, [], 'Detail sheet accessibility violations');
   console.log('Browser checks passed: controls, editor, navigation, themes, accessibility, and five viewport widths.');
 } catch (error) {
   await page.screenshot({ path: 'docs/screenshots/check-failure.png', fullPage: true }).catch(() => {});

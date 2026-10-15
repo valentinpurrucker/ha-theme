@@ -2,9 +2,9 @@
 
 # Still cards
 
-A quiet Home Assistant card collection and matching light/dark theme. Soft surfaces, restrained colors, clear controls, and one shared design language. Inspired by the simplicity of Mushroom and Bubble Card; implemented as an independent library.
+A clean Home Assistant dashboard collection with an iOS-inspired light/dark theme. Grouped surfaces, system typography, familiar switches, and focused detail sheets share one design language. Inspired by the simplicity of Mushroom and Bubble Card; implemented as an independent library.
 
-**Ten card kinds:** entity/sensor, light, climate, media, cover, fan, scene/action, weather, chips, and title. One auto card chooses the appropriate kind from the entity domain. Cards support the dashboard picker, a visual editor, Sections sizing, and masonry sizing.
+**Twelve card kinds:** entity/sensor, light, toggle, climate, solar, media, cover, fan, scene/action, weather, chips, and title. One auto card chooses the appropriate kind from the entity domain. Cards support the dashboard picker, a visual editor, Sections sizing, and masonry sizing.
 
 ## Install with HACS
 
@@ -48,7 +48,7 @@ bun run dev
 
 Open http://localhost:5173. The demo uses the actual custom cards with simulated Home Assistant state and service calls. Try the controls, room filters, card editor, unavailable-device switch, and style studio. The studio remembers appearance settings locally and exports a custom theme YAML file. It does not connect to your real home.
 
-After building, `bun run preview:inline` creates a portable `docs/preview.html` with four interactive production cards and style controls, without external assets.
+After building, `bun run preview:inline` creates a portable `docs/preview.html` with six interactive production cards and style controls, without external assets.
 
 ## Manual installation
 
@@ -57,7 +57,7 @@ bun run build
 ```
 
 1. Copy `release/still-cards.js` into `<config>/www/still-cards.js`. Create `www` if necessary; Home Assistant may need a restart when this folder is first added.
-2. Enable Advanced mode in your profile, then add `/local/still-cards.js?v=0.1.0` as a **JavaScript module** under Settings → Dashboards → Resources. YAML resource mode is covered in [examples/configuration.yaml](examples/configuration.yaml).
+2. Enable Advanced mode in your profile, then add `/local/still-cards.js?v=0.2.0` as a **JavaScript module** under Settings → Dashboards → Resources. YAML resource mode is covered in [examples/configuration.yaml](examples/configuration.yaml).
 3. Copy `release/still.yaml` into `<config>/themes/still.yaml`. Merge `themes: !include_dir_merge_named themes` into your existing `frontend:` block in `configuration.yaml`. Restart after first enabling themes; for later changes, run `frontend.reload_themes` under Developer tools → Actions.
 4. Select **Still** in your user profile. Both light and dark modes are available. Add a Still card through the dashboard editor or paste the example below.
 
@@ -68,7 +68,15 @@ name: Reading light
 variant: soft
 ```
 
-Replace the sample entities in [examples/dashboard.yaml](examples/dashboard.yaml) with your own. The card bundle works independently of the companion theme and inherits Home Assistant colors by default. Lit is bundled: no CDN, card-mod, Mushroom, or Bubble Card dependency is required at runtime. The demo alone loads optional Google Fonts and demo icons.
+Replace the sample entities in [examples/dashboard.yaml](examples/dashboard.yaml) with your own. The card bundle works independently of the companion theme and inherits Home Assistant colors by default. Lit is bundled: no CDN, card-mod, Mushroom, or Bubble Card dependency is required at runtime. System fonts are used throughout; demo icons are bundled locally.
+
+## Dashboard and detail controls
+
+Tap a card header to open its detail sheet; direct switches and buttons control devices immediately. Close the sheet with its close button, Escape, or a tap outside. Use `tap_action: {action: more-info}` to keep the native Home Assistant dialog as the default.
+
+Climate cards show the thermostat’s advertised presets and send `climate.set_preset_mode`. Light cards accept `layout: tile` for a compact switch with brightness/warmth in details. Solar cards map your production, home, grid, battery, and daily-generation sensors; power and energy units stay separate. See [configuration examples](docs/configuration.md#climate-presets-light-tiles-and-solar).
+
+![Still dashboard in daylight](docs/screenshots/desktop-light.png)
 
 ## Change the style
 
@@ -86,7 +94,7 @@ Each card also supports `variant: soft | outlined | minimal`, `density: comforta
 
 ## Extend it
 
-Each card kind is a small renderer registered with shared metadata. The common shell handles Home Assistant data, validation, actions, errors, sizing, and theme tokens. Add a renderer without duplicating the whole card implementation. See [docs/architecture.md](docs/architecture.md) for source and external-module extension examples.
+Each card kind is a small renderer registered with shared metadata. The common shell handles Home Assistant data, validation, detail sheets, actions, errors, sizing, and theme tokens. Add a renderer without duplicating the whole card implementation. See [docs/architecture.md](docs/architecture.md) for source and external-module extension examples.
 
 ## Verify and build
 
@@ -107,6 +115,6 @@ Research by GPT‑6 Luna, with primary-source links, is in [docs/research.md](do
 
 ## Scope
 
-This is a frontend project, not a backend integration. v0.1 focuses on common controls: brightness and Kelvin warmth, single-target thermostat adjustment, transport and volume, cover position, and fan percentage/oscillation. Dual-target climate editing opens native more-info. RGB pickers, history graphs, forecasts, media queues, cover tilt, fan presets, templates, security cards, and hold/double-tap gestures are deferred. See [docs/configuration.md](docs/configuration.md) for exact behavior.
+This is a frontend project, not a backend integration. v0.2 adds climate presets, compact light tiles, shared detail sheets, and solar sensor mappings alongside brightness and Kelvin warmth, single-target thermostat adjustment, transport and volume, cover position, and fan percentage/oscillation. Dual-target climate editing opens native more-info. RGB pickers, history graphs, forecasts, media queues, cover tilt, fan presets, templates, security cards, and hold/double-tap gestures are deferred. See [docs/configuration.md](docs/configuration.md) for exact behavior.
 
 MIT licensed. Bundled third-party license notices are included in `release/THIRD_PARTY_LICENSES.txt`.

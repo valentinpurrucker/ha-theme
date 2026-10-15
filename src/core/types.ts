@@ -18,10 +18,10 @@ export interface HomeAssistant {
   formatEntityName?: (entity: HassEntity, name?: string) => string;
 }
 
-export type CardKind = 'entity' | 'light' | 'climate' | 'media' | 'cover' | 'fan' | 'scene' | 'weather' | 'chips' | 'title';
+export type CardKind = 'entity' | 'light' | 'toggle' | 'climate' | 'solar' | 'media' | 'cover' | 'fan' | 'scene' | 'weather' | 'chips' | 'title';
 export type ActionTarget = { entity_id?: string | string[]; area_id?: string | string[]; device_id?: string | string[] };
 export interface CardAction {
-  action: 'none' | 'more-info' | 'toggle' | 'perform-action' | 'call-service' | 'navigate' | 'url';
+  action: 'none' | 'details' | 'more-info' | 'toggle' | 'perform-action' | 'call-service' | 'navigate' | 'url';
   perform_action?: string;
   service?: string;
   data?: Record<string, unknown>;
@@ -61,6 +61,16 @@ export interface StillConfig {
   unit?: string;
   show_state?: boolean;
   show_controls?: boolean;
+  show_presets?: boolean;
+  layout?: 'tile' | 'panel';
+  solar?: {
+    home_power?: string;
+    grid_power?: string;
+    battery_level?: string;
+    battery_power?: string;
+    energy_today?: string;
+    grid_export_positive?: boolean;
+  };
   variant?: 'soft' | 'outlined' | 'minimal';
   density?: 'comfortable' | 'compact';
   style?: CardStyle;
@@ -82,6 +92,7 @@ export interface RenderContext {
   hass?: HomeAssistant;
   disabled: boolean;
   pending: boolean;
+  view: 'card' | 'details';
   call: (command: ServiceCommand) => Promise<void>;
   act: (action?: CardAction, entityId?: string) => Promise<void>;
   icon: (icon: string) => TemplateResult;

@@ -21,9 +21,15 @@ views:
           - type: custom:still-weather-card
             entity: weather.home
             name: Outside
-          - type: custom:still-entity-card
-            entity: sensor.daily_energy
-            name: Energy today
+          - type: custom:still-solar-card
+            entity: sensor.solar_power
+            name: Solar & energy
+            solar:
+              home_power: sensor.home_power
+              grid_power: sensor.grid_power
+              battery_level: sensor.battery_level
+              battery_power: sensor.battery_power
+              energy_today: sensor.solar_today
       - type: grid
         cards:
           - type: custom:still-title-card
@@ -33,6 +39,7 @@ views:
             name: Reading light
           - type: custom:still-climate-card
             entity: climate.living_room
+            show_presets: true
           - type: custom:still-media-card
             entity: media_player.living_room
           - type: custom:still-cover-card
@@ -43,7 +50,10 @@ views:
             name: The little things
           - type: custom:still-fan-card
             entity: fan.bedroom
-          - type: custom:still-entity-card
+          - type: custom:still-light-card
+            entity: light.bedroom
+            layout: tile
+          - type: custom:still-toggle-card
             entity: switch.coffee_machine
           - type: custom:still-scene-card
             entity: scene.slow_evening

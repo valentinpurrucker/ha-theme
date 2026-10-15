@@ -6,7 +6,9 @@ Use `custom:still-card` for automatic entity-domain selection or any of the focu
 | --- | --- | --- |
 | `custom:still-entity-card` | Any entity, including sensor and binary_sensor | Readable state; switch/input_boolean/automation toggle; numeric sensor value |
 | `custom:still-light-card` | light | Power, supported brightness, supported Kelvin color temperature |
-| `custom:still-climate-card` | climate | Target ± step, actual temperature, advertised HVAC modes; native more-info for dual setpoints |
+| `custom:still-toggle-card` | switch, input_boolean, automation, light | Native-style power switch |
+| `custom:still-climate-card` | climate | Target ± step, actual temperature, supported presets and HVAC modes; native more-info for dual setpoints |
+| `custom:still-solar-card` | sensor | Live W/kW generation with optional home, grid, battery, and daily energy |
 | `custom:still-media-card` | media_player | Metadata/artwork; supported play/pause, previous/next, volume |
 | `custom:still-cover-card` | cover | Supported open/stop/close and position |
 | `custom:still-fan-card` | fan | Supported power, percentage, and oscillation |
@@ -31,7 +33,10 @@ An optional `kind` overrides auto selection, including registered extensions. Fo
 | `density` | comfortable | `comfortable` or `compact` |
 | `attribute` | unset | Render this attribute instead of state on entity cards |
 | `unit` | HA unit | Override the state/attribute unit text |
-| `tap_action` | more-info | Header action; title has no tap action |
+| `tap_action` | details | Header action; title has no tap action |
+| `layout` | panel | Light: `panel` for inline controls, `tile` for a compact switch and full controls in details |
+| `show_presets` | true | Climate: show presets when the entity supports them |
+| `solar` | unset | Optional related sensor mappings for solar cards |
 | `style` | theme values | Scoped style overrides described below |
 | `chips` | Required for chips | List of chip objects |
 
@@ -39,7 +44,7 @@ Native Home Assistant formatters are used for entity names, states, and attribut
 
 ## Actions
 
-Header taps open native `hass-more-info` by default. Device control buttons call domain services directly. No hold or double-tap action is bound. The supported explicit `tap_action` values are `none`, `more-info`, `toggle`, `perform-action`, `call-service` (legacy alias), `navigate`, and `url`. `assist` and HA-specific confirmation exemptions are not implemented in v0.1.
+Header taps open a Still detail sheet by default (`action: details`). It uses the same renderer and service actions as the card, with expanded light and weather controls. Escape, the close button, and the backdrop close it and return keyboard focus. The sheet also provides an “Open in Home Assistant” button. Set `action: more-info` to use native `hass-more-info` directly. Device control buttons call domain services directly. No hold or double-tap action is bound. The supported explicit `tap_action` values are `none`, `details`, `more-info`, `toggle`, `perform-action`, `call-service` (legacy alias), `navigate`, and `url`. `assist` and HA-specific confirmation exemptions are not implemented in v0.2.
 
 ```yaml
 type: custom:still-scene-card
@@ -59,6 +64,41 @@ For scenes/actions, configuring `tap_action` also applies it to the explicit act
 `toggle` supports light, switch, fan, input_boolean, and automation. Other entity domains are rejected; covers and locks are never implicitly toggled. `perform-action` accepts `perform_action: domain.service`, optional `target` (`entity_id`, `area_id`, `device_id`), and `data`. If neither a target nor a data entity is supplied, the card entity is added. Explicit targets take precedence. Legacy `call-service` accepts `service` and `service_data`.
 
 Use `confirmation: true` or `confirmation: {text: "Run this scene?"}` for a native browser confirmation on a configured tap action. Direct power/slider/transport buttons are not affected by header confirmation. `navigate` requires a local `navigation_path` beginning with `/`, emits `location-changed`, and uses browser history. `url` requires an absolute HTTP/HTTPS `url_path` and opens a tab with `noopener,noreferrer`.
+
+## Climate presets, light tiles, and solar
+
+```yaml
+type: custom:still-climate-card
+entity: climate.living_room
+show_presets: true
+```
+
+Presets come from `preset_modes` when the entity advertises `ClimateEntityFeature.PRESET_MODE` (16). The active `preset_mode` is selected, and buttons send its exact string to `climate.set_preset_mode`. Nothing is invented for thermostats without presets. Mode lists scroll horizontally when needed. The temperature dial represents the configured target within the entity’s bounds; it is a display, with ± buttons for adjustment.
+
+```yaml
+type: custom:still-light-card
+entity: light.bedroom
+layout: tile
+```
+
+The tile keeps its power switch on the dashboard. Tap its header for supported brightness and Kelvin controls. `show_controls: false` hides controls in both views.
+
+```yaml
+type: custom:still-solar-card
+entity: sensor.solar_power   # Production: W or kW
+name: Solar & energy
+solar:
+  home_power: sensor.home_power        # W or kW
+  grid_power: sensor.grid_power        # W or kW; positive import, negative export
+  battery_level: sensor.battery_level  # % from 0 to 100
+  battery_power: sensor.battery_power  # W or kW; magnitude displayed
+  energy_today: sensor.solar_today     # Today's generated Wh or kWh
+  grid_export_positive: false
+```
+
+Only production is required. Unconfigured nodes are omitted; unavailable, invalid, or unsupported readings show a dash. Power is normalized from W/kW; daily energy is normalized from Wh/kWh. Map an actual daily-generation sensor to `energy_today`, since the card does not reset a lifetime counter or query history. Set `grid_export_positive: true` if your grid sensor uses positive numbers for export. Home and production values should be nonnegative. Battery power displays magnitude, without assuming its charging sign convention. The connecting line groups live readings; it does not calculate unmeasured flows or imply a historical chart.
+
+Source contracts: [HA climate entities](https://developers.home-assistant.io/docs/core/entity/climate/), [climate actions](https://www.home-assistant.io/integrations/climate/), and [energy management](https://www.home-assistant.io/docs/energy/).
 
 ## Chips and headings
 
@@ -91,25 +131,31 @@ These are public CSS custom properties. Omit the leading `--` in HA theme YAML.
 
 | Token | Purpose | Default/fallback |
 | --- | --- | --- |
-| `--still-accent` | Accent and active controls | HA primary color, then sage |
+| `--still-accent` | Accent and active controls | HA primary color, then blue |
 | `--still-on-accent` | Text on solid accent controls | white |
 | `--still-surface` | Card surface | HA card surface, then white |
 | `--still-text` | Primary text | HA primary text |
 | `--still-muted` | Secondary text | HA secondary text |
-| `--still-subtle` | Control/icon background | Accent/surface mix |
+| `--still-subtle` | Control/icon background | Text/surface mix |
 | `--still-border-color` | Border color | Text at 10% opacity |
 | `--still-border` | Full border declaration | 1px solid border color |
-| `--still-radius` | Card corners | 22px |
+| `--still-radius` | Card corners | 24px |
 | `--still-padding` | Comfortable card padding | 20px |
 | `--still-compact-padding` | Compact card padding | 70% of comfortable padding |
-| `--still-shadow` | Card shadow | none |
+| `--still-shadow` | Card shadow | Subtle shadow |
 | `--still-font` | Font stack | HA font, then system UI |
 | `--still-icon-size` | Icon container size | 44px |
-| `--still-icon-radius` | Icon container corners | 15px |
+| `--still-icon-radius` | Icon container corners | 14px |
 | `--still-control-radius` | Button/input corners | 13px |
 | `--still-chip-radius` | Chip corners | 30px |
 | `--still-name-size` | Name text size | 14px |
-| `--still-value-size` | Main numeric value | 36px; thermostat uses 32px |
+| `--still-value-size` | Main numeric value | 36px; domain values adapt |
+| `--still-dialog-radius` | Detail sheet corners | 30px |
+| `--still-toggle-color` | Enabled switch track | #248b45 |
+| `--still-light-color` | Active light icon | #a76500 |
+| `--still-solar-color` | Solar indicators | #147a53 |
+| `--still-weather-color` | Weather illustration | Accent |
+| `--still-climate-dial-size` | Card thermostat dial | 122px; expands in details |
 | `--still-title-size` | Heading size | 24px |
 
 ```yaml

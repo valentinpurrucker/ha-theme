@@ -7,5 +7,5 @@ frontend:
 lovelace:
   resource_mode: yaml
   resources:
-    - url: /local/still-cards.js?v=0.1.0
+    - url: /local/still-cards.js?v=0.2.0
       type: module
