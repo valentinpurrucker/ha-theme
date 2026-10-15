@@ -1,0 +1,11 @@
+# Merge this into your existing frontend block.
+frontend:
+  themes: !include_dir_merge_named themes
+
+# If you use YAML resource mode, merge this into your existing lovelace block.
+# For storage/UI mode, add the resource in Settings > Dashboards > Resources.
+lovelace:
+  resource_mode: yaml
+  resources:
+    - url: /local/still-cards.js?v=0.1.0
+      type: module

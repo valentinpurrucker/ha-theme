@@ -1,0 +1,13 @@
+import { LitElement, css, html } from 'lit';
+import { mdiHomeOutline, mdiLightbulbOutline, mdiThermometer, mdiWeatherPartlyCloudy, mdiWaterPercent, mdiLightningBoltOutline, mdiBlindsHorizontal, mdiThermostat, mdiSpeaker, mdiFan, mdiCreationOutline, mdiPowerPlugOutline, mdiWeatherNight, mdiPlay, mdiPlayOutline, mdiPause, mdiSkipNext, mdiSkipPrevious, mdiPlus, mdiMinus, mdiChevronUp, mdiChevronDown, mdiStop, mdiArrowTopRight, mdiSwapHorizontal, mdiCircleOutline, mdiCircleSmall, mdiFormatTitle, mdiDotsHorizontalCircleOutline, mdiTuneVariant, mdiViewDashboardOutline, mdiViewGridOutline, mdiCodeTags, mdiArrowRight, mdiClose, mdiCheck, mdiMenu, mdiLeaf, mdiDoorClosed, mdiMotionSensor, mdiBatteryOutline, mdiFlashOutline, mdiContentCopy, mdiDownload, mdiRefresh, mdiCogOutline } from '@mdi/js';
+
+const icons: Record<string, string> = Object.fromEntries(Object.entries({ mdiHomeOutline, mdiLightbulbOutline, mdiThermometer, mdiWeatherPartlyCloudy, mdiWaterPercent, mdiLightningBoltOutline, mdiBlindsHorizontal, mdiThermostat, mdiSpeaker, mdiFan, mdiCreationOutline, mdiPowerPlugOutline, mdiWeatherNight, mdiPlay, mdiPlayOutline, mdiPause, mdiSkipNext, mdiSkipPrevious, mdiPlus, mdiMinus, mdiChevronUp, mdiChevronDown, mdiStop, mdiArrowTopRight, mdiSwapHorizontal, mdiCircleOutline, mdiCircleSmall, mdiFormatTitle, mdiDotsHorizontalCircleOutline, mdiTuneVariant, mdiViewDashboardOutline, mdiViewGridOutline, mdiCodeTags, mdiArrowRight, mdiClose, mdiCheck, mdiMenu, mdiLeaf, mdiDoorClosed, mdiMotionSensor, mdiBatteryOutline, mdiFlashOutline, mdiContentCopy, mdiDownload, mdiRefresh, mdiCogOutline }).map(([name, value]) => [`mdi:${name.slice(3).replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`).slice(1)}`, value]));
+
+class DemoIcon extends LitElement {
+  static properties = { icon: { type: String } };
+  static styles = css`:host { display:inline-flex; width:var(--mdc-icon-size,24px); height:var(--mdc-icon-size,24px); } svg { width:100%;height:100%;fill:currentColor; }`;
+  icon = 'mdi:circle-outline';
+  render() { return html`<svg viewBox="0 0 24 24" aria-hidden="true"><path d=${icons[this.icon] ?? mdiCircleOutline}></path></svg>`; }
+}
+// Home Assistant owns ha-icon in production. This stand-in belongs only to the demo.
+if (!customElements.get('ha-icon')) customElements.define('ha-icon', DemoIcon);

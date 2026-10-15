@@ -1,0 +1,44 @@
+name: Check Still cards
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun x playwright-core install --with-deps chromium
+      - name: Check the production demo in Chromium
+        env:
+          STILL_DEMO_URL: http://localhost:5173
+          STILL_LIBRARY_URL: http://localhost:5173/still-cards.js
+        run: |
+          bun x vite preview --host 127.0.0.1 --port 5173 > /tmp/still-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:5173 > /dev/null; then break; fi
+            sleep 1
+          done
+          bun run test:browser
+      - run: bun scripts/package.ts
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: still-cards-build-and-verification
+          path: |
+            release/
+            docs/browser-results.json
+            docs/screenshots/
+          retention-days: 14

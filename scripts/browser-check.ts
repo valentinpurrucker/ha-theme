@@ -1,0 +1,140 @@
+import { chromium } from 'playwright-core';
+import AxeBuilder from '@axe-core/playwright';
+import { mkdir, writeFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+
+// Use a running dev/preview server. In CI, install Chromium with playwright-core.
+const browser = await chromium.launch({ executablePath: process.env.STILL_CHROME_PATH || undefined, headless: true, args: process.env.STILL_BROWSER_NO_SANDBOX === '1' ? ['--no-sandbox'] : [] });
+const context = await browser.newContext({ viewport: { width: 1440, height: 1050 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
+const page = await context.newPage();
+const errors: string[] = [];
+const findings: Record<string, unknown> = {};
+page.on('pageerror', (error) => errors.push(error.message));
+await mkdir('docs/screenshots', { recursive: true });
+try {
+  await page.goto(process.env.STILL_DEMO_URL ?? 'http://localhost:5173', { waitUntil: 'networkidle' });
+  await page.getByRole('heading', { name: 'Good evening, Alex.' }).waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: 'docs/screenshots/desktop-light.png', fullPage: true });
+  const light = page.locator('still-card[data-demo-id=light]');
+  await light.getByRole('switch').click();
+  await page.waitForFunction(() => document.querySelector<HTMLElement>('still-card[data-demo-id=light]')?.shadowRoot?.querySelector('[role=switch]')?.getAttribute('aria-checked') === 'false');
+  await light.getByRole('slider', { name: 'Brightness' }).evaluate((node: HTMLInputElement) => { node.value = '42'; node.dispatchEvent(new Event('input', { bubbles: true })); node.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=light]')?.shadowRoot?.querySelector('output')?.value === '42%');
+  await page.locator('still-card[data-demo-id=climate]').getByRole('button', { name: 'Increase target temperature' }).click();
+  await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=climate]')?.shadowRoot?.querySelector('.value')?.textContent?.includes('22.5'));
+  await page.locator('still-card[data-demo-id=media]').getByRole('button', { name: 'Pause', exact: true }).click();
+  await page.locator('still-card[data-demo-id=media]').getByRole('button', { name: 'Play', exact: true }).waitFor();
+  await page.locator('still-card[data-demo-id=cover]').getByRole('button', { name: 'Close cover' }).click();
+  await page.waitForFunction(() => document.querySelector('still-card[data-demo-id=cover]')?.shadowRoot?.querySelector('output')?.value === '0%');
+  await page.getByRole('button', { name: 'Try an unavailable device' }).click();
+  assert.equal(await light.getByRole('switch').count(), 0);
+  await page.locator('still-card[data-demo-id=scene]').getByRole('button', { name: 'Activate scene' }).click();
+  // A deliberate scene may change that device, so restore test conditions.
+  await page.getByRole('button', { name: 'Try an unavailable device' }).click();
+  await page.getByRole('button', { name: 'Reconnect reading light' }).click();
+  await page.getByRole('button', { name: 'Edit Reading light' }).click();
+  const editor = page.locator('still-card-editor');
+  await editor.getByRole('textbox', { name: 'Name', exact: true }).fill('My reading corner');
+  await editor.getByRole('textbox', { name: 'Name', exact: true }).press('Tab');
+  await page.getByRole('button', { name: 'Save card' }).click();
+  assert.ok((await light.locator('.name').textContent())?.includes('My reading corner'));
+  await page.getByRole('button', { name: 'Edit Reading light' }).click();
+  await editor.getByRole('combobox', { name: 'Card kind' }).selectOption('climate');
+  await editor.locator('input[list="entities"]').fill('climate.living_room');
+  await editor.locator('input[list="entities"]').press('Tab');
+  await page.waitForFunction(() => !document.querySelector<HTMLButtonElement>('.dialog .primary-button')?.disabled);
+  assert.ok((await page.locator('still-card[data-demo-id=editor-preview] .value').textContent())?.includes('22.5'));
+  await page.getByRole('button', { name: 'Close editor' }).click();
+  await page.getByRole('button', { name: 'Outline', exact: true }).click();
+  assert.equal(await light.locator('ha-card').getAttribute('data-variant'), 'outlined');
+  await page.getByRole('button', { name: 'Compact', exact: true }).click();
+  assert.equal(await light.locator('ha-card').evaluate((shell) => getComputedStyle(shell).padding), '14px');
+  await page.getByRole('slider', { name: 'Card roundness' }).evaluate((node: HTMLInputElement) => { node.value = '16'; node.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForFunction(() => getComputedStyle(document.querySelector('still-card[data-demo-id=light]')!.shadowRoot!.querySelector('ha-card')!).borderRadius === '16px');
+  await page.getByRole('button', { name: 'Reset to Still' }).click();
+  await page.getByRole('button', { name: 'Ocean accent' }).click();
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--still-accent').trim()), '#4a6f91');
+  await page.getByRole('button', { name: 'After dark' }).click();
+  await page.locator('.toast').waitFor({ state: 'hidden' });
+  await page.screenshot({ path: 'docs/screenshots/desktop-dark.png', fullPage: true });
+  findings.darkAccessibility = (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations.map((violation) => ({ id: violation.id, impact: violation.impact, nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })) }));
+  await page.getByRole('button', { name: 'Reset to Still' }).click();
+  await page.locator('.toast').waitFor({ state: 'hidden' });
+  await page.getByRole('button', { name: 'Card collection' }).click();
+  assert.equal(await page.locator('.collection-item').count(), 10);
+  findings.sectionsSizing = await page.evaluate(async () => {
+    const results = [];
+    for (const source of document.querySelectorAll('still-card')) {
+      const card = document.createElement('still-card') as HTMLElement & { setConfig: (config: unknown) => void; config: unknown; hass: unknown; updateComplete: Promise<unknown>; getGridOptions: () => { rows?: number; min_columns: number } };
+      const original = source as typeof card;
+      const wrapper = document.createElement('div');
+      card.setConfig(original.config); card.hass = original.hass;
+      const grid = card.getGridOptions();
+      wrapper.style.width = grid.min_columns === 9 ? '288px' : '188px';
+      wrapper.style.height = grid.rows ? `${grid.rows * 56 + (grid.rows - 1) * 8}px` : 'auto';
+      wrapper.style.position = 'absolute'; wrapper.style.left = '-1000px';
+      wrapper.append(card); document.body.append(wrapper);
+      await card.updateComplete;
+      const shell = card.shadowRoot!.querySelector<HTMLElement>('ha-card')!;
+      results.push({ kind: shell.dataset.kind, horizontal: shell.scrollWidth - shell.clientWidth, vertical: shell.scrollHeight - shell.clientHeight });
+      wrapper.remove();
+    }
+    return results;
+  });
+  assert.ok((findings.sectionsSizing as { horizontal: number; vertical: number }[]).every((size) => size.horizontal <= 1 && size.vertical <= 1), `Sections card clipping: ${JSON.stringify(findings.sectionsSizing)}`);
+  await page.screenshot({ path: 'docs/screenshots/collection.png', fullPage: true });
+  await page.getByRole('button', { name: 'Getting started' }).click();
+  assert.equal(await page.locator('.setup-step').count(), 3);
+  await page.getByRole('button', { name: 'Overview', exact: true }).click();
+  await page.getByRole('button', { name: 'Bedroom', exact: true }).click();
+  assert.equal(await page.locator('.dashboard-grid .card-cell').count(), 3);
+  await page.getByRole('button', { name: 'All rooms', exact: true }).click();
+  findings.lightAccessibility = (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations.map((violation) => ({ id: violation.id, impact: violation.impact, nodes: violation.nodes.map((node) => ({ target: node.target, summary: node.failureSummary })) }));
+  const responsive: Record<string, unknown>[] = [];
+  for (const width of [1920, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    const measurement = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth, overflows: Array.from(document.querySelectorAll('still-card')).flatMap((card) => {
+      const shell = card.shadowRoot?.querySelector<HTMLElement>('ha-card');
+      return shell && shell.scrollWidth > shell.clientWidth + 1 ? [{ id: card.getAttribute('data-demo-id'), width: shell.clientWidth, content: shell.scrollWidth }] : [];
+    }) }));
+    assert.ok(measurement.document <= width + 1, `Page overflows at ${width}px`);
+    assert.equal(measurement.overflows.length, 0, `Card overflow at ${width}px: ${JSON.stringify(measurement.overflows)}`);
+    responsive.push(measurement);
+    if (width === 390) await page.screenshot({ path: 'docs/screenshots/mobile.png', fullPage: true });
+  }
+  findings.responsive = responsive;
+  const bundlePage = await context.newPage();
+  bundlePage.on('pageerror', (error) => errors.push(error.message));
+  const origin = new URL(process.env.STILL_DEMO_URL ?? 'http://localhost:5173').origin;
+  const libraryUrl = process.env.STILL_LIBRARY_URL ?? `${origin}/dist/still-cards.js`;
+  const harness = `<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Bundle compatibility check</title></head><body><script type="module">
+    import { getCardDefinitions } from ${JSON.stringify(libraryUrl)};
+    window.commands = [];
+    const card = document.createElement('still-light-card');
+    card.setConfig({ type: 'custom:still-light-card', entity: 'light.test' });
+    card.hass = { states: { 'light.test': { entity_id: 'light.test', state: 'on', attributes: { friendly_name: 'Bundle test', brightness: 128, supported_color_modes: ['brightness'] } } }, callService: async (...args) => { window.commands.push(args); } };
+    document.body.append(card);
+    await card.updateComplete;
+    window.bundleReady = getCardDefinitions().length;
+  </script></body></html>`;
+  await bundlePage.route('**/__still_bundle_check', (route) => route.fulfill({ contentType: 'text/html', body: harness }));
+  await bundlePage.goto(`${origin}/__still_bundle_check`);
+  await bundlePage.waitForFunction(() => (window as unknown as { bundleReady: number }).bundleReady === 10);
+  await bundlePage.getByRole('switch').click();
+  const bundleCommands = await bundlePage.evaluate(() => (window as unknown as { commands: unknown[] }).commands);
+  assert.deepEqual(bundleCommands, [['light', 'toggle', { entity_id: 'light.test' }, undefined]]);
+  assert.equal(await bundlePage.getByRole('slider', { name: 'Brightness' }).count(), 1);
+  findings.productionBundle = { cardKinds: 10, pickerEntries: await bundlePage.evaluate(() => window.customCards?.length), command: bundleCommands[0] };
+  await bundlePage.close();
+  findings.consoleErrors = errors;
+  await writeFile('docs/browser-results.json', JSON.stringify(findings, null, 2) + '\n');
+  assert.deepEqual(errors, [], 'Unexpected browser errors');
+  assert.deepEqual(findings.lightAccessibility, [], 'Light theme accessibility violations');
+  assert.deepEqual(findings.darkAccessibility, [], 'Dark theme accessibility violations');
+  console.log('Browser checks passed: controls, editor, navigation, themes, accessibility, and five viewport widths.');
+} catch (error) {
+  await page.screenshot({ path: 'docs/screenshots/check-failure.png', fullPage: true }).catch(() => {});
+  await writeFile('docs/browser-results.json', JSON.stringify({ ...findings, consoleErrors: errors, failure: String(error) }, null, 2) + '\n');
+  throw error;
+} finally { await browser.close(); }

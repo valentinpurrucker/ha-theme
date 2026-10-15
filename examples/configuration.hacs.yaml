@@ -1,0 +1,12 @@
+# Optional companion theme: copy themes/still.yaml into your config/themes folder.
+# Merge this into your existing frontend block if themes are not yet enabled.
+frontend:
+  themes: !include_dir_merge_named themes
+
+# HACS manages this resource automatically in storage mode.
+# Add this block only when you use YAML resource mode.
+lovelace:
+  resource_mode: yaml
+  resources:
+    - url: /hacsfiles/ha-theme/still-cards.js
+      type: module

@@ -1,0 +1,96 @@
+{
+  "darkAccessibility": [],
+  "sectionsSizing": [
+    {
+      "kind": "entity",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "light",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "climate",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "media",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "cover",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "fan",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "scene",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "weather",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "chips",
+      "horizontal": 0,
+      "vertical": 0
+    },
+    {
+      "kind": "title",
+      "horizontal": 0,
+      "vertical": 0
+    }
+  ],
+  "lightAccessibility": [],
+  "responsive": [
+    {
+      "viewport": 1920,
+      "document": 1920,
+      "overflows": []
+    },
+    {
+      "viewport": 1024,
+      "document": 1024,
+      "overflows": []
+    },
+    {
+      "viewport": 768,
+      "document": 768,
+      "overflows": []
+    },
+    {
+      "viewport": 390,
+      "document": 390,
+      "overflows": []
+    },
+    {
+      "viewport": 320,
+      "document": 320,
+      "overflows": []
+    }
+  ],
+  "productionBundle": {
+    "cardKinds": 10,
+    "pickerEntries": 11,
+    "command": [
+      "light",
+      "toggle",
+      {
+        "entity_id": "light.test"
+      },
+      null
+    ]
+  },
+  "consoleErrors": []
+}

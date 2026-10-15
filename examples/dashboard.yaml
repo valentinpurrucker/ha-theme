@@ -1,0 +1,56 @@
+title: Still Home
+views:
+  - title: Home
+    path: home
+    type: sections
+    max_columns: 3
+    theme: Still
+    sections:
+      - type: grid
+        cards:
+          - type: custom:still-title-card
+            name: At home
+            subtitle: A little space to breathe.
+          - type: custom:still-chips-card
+            chips:
+              - entity: person.alex
+                icon: mdi:home-outline
+              - entity: sensor.indoor_temperature
+                name: Inside
+                icon: mdi:thermometer
+          - type: custom:still-weather-card
+            entity: weather.home
+            name: Outside
+          - type: custom:still-entity-card
+            entity: sensor.daily_energy
+            name: Energy today
+      - type: grid
+        cards:
+          - type: custom:still-title-card
+            name: Living room
+          - type: custom:still-light-card
+            entity: light.living_room
+            name: Reading light
+          - type: custom:still-climate-card
+            entity: climate.living_room
+          - type: custom:still-media-card
+            entity: media_player.living_room
+          - type: custom:still-cover-card
+            entity: cover.living_room
+      - type: grid
+        cards:
+          - type: custom:still-title-card
+            name: The little things
+          - type: custom:still-fan-card
+            entity: fan.bedroom
+          - type: custom:still-entity-card
+            entity: switch.coffee_machine
+          - type: custom:still-scene-card
+            entity: scene.slow_evening
+            name: Slow evening
+          - type: custom:still-scene-card
+            entity: scene.goodnight
+            name: Good night
+            icon: mdi:weather-night
+            style:
+              accent: "#8b789d"

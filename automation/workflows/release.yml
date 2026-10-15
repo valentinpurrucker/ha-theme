@@ -1,0 +1,55 @@
+name: Release Still Cards
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - name: Publish the HACS asset and manual-install archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          args=(
+            release/still-cards.js
+            release/still.yaml
+            release/hacs.json
+            release/SHA256SUMS
+            release/THIRD_PARTY_LICENSES.txt
+            release/LICENSE
+            release/still-cards-*.tar.gz
+            --verify-tag
+            --title "Still Cards $RELEASE_TAG"
+            --notes-file .github/release-notes.md
+          )
+          if [[ "$RELEASE_TAG" == *-* ]]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${args[@]}"
+      - name: Validate the published repository with HACS
+        uses: hacs/action@main
+        with:
+          category: plugin
+          comment: false

@@ -1,0 +1,33 @@
+{
+  "name": "still-cards",
+  "version": "0.1.0",
+  "description": "Quiet, composable Home Assistant cards and a matching theme.",
+  "type": "module",
+  "private": true,
+  "packageManager": "bun@1.4.2",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build --config vite.library.config.ts && vite build && bun scripts/package.ts && bun run check:release",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "bun scripts/browser-check.ts",
+    "preview:inline": "bun scripts/inline-preview.ts",
+    "check:release": "bun scripts/check-release.ts",
+    "check": "bun run typecheck && bun run test && bun run build"
+  },
+  "dependencies": {
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@mdi/js": "^7.4.47",
+    "@types/bun": "^1.4.3",
+    "happy-dom": "^21.0.1",
+    "playwright-core": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4",
+    "yaml": "^2.9.1"
+  }
+}

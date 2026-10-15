@@ -1,0 +1,8 @@
+node_modules/
+dist/
+site/
+release/
+coverage/
+.DS_Store
+*.log
+docs/preview.html
